@@ -57,14 +57,14 @@ jobs:
           $info | Set-Content -Encoding ASCII C:\server2019-info.txt
           Get-Content C:\server2019-info.txt
 
-      - name: Split ISO into 900 MiB transport chunks
+      - name: Split ISO into 450 MiB transport chunks
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $inputPath = "C:\server2019-eval.iso"
           $outDir = "C:\server2019-parts"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          $chunkSize = 900MB
+          $chunkSize = 450MB
           $buffer = New-Object byte[] (4MB)
           $input = [System.IO.File]::OpenRead($inputPath)
           try {
@@ -91,7 +91,7 @@ jobs:
       - name: Upload part 00
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-00
+          name: server2019-small-00
           path: C:\server2019-parts\part-00.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -99,7 +99,7 @@ jobs:
       - name: Upload part 01
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-01
+          name: server2019-small-01
           path: C:\server2019-parts\part-01.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -107,7 +107,7 @@ jobs:
       - name: Upload part 02
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-02
+          name: server2019-small-02
           path: C:\server2019-parts\part-02.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -115,7 +115,7 @@ jobs:
       - name: Upload part 03
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-03
+          name: server2019-small-03
           path: C:\server2019-parts\part-03.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -123,7 +123,7 @@ jobs:
       - name: Upload part 04
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-04
+          name: server2019-small-04
           path: C:\server2019-parts\part-04.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -131,7 +131,7 @@ jobs:
       - name: Upload part 05
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-05
+          name: server2019-small-05
           path: C:\server2019-parts\part-05.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -139,7 +139,7 @@ jobs:
       - name: Upload part 06
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-06
+          name: server2019-small-06
           path: C:\server2019-parts\part-06.bin
           if-no-files-found: ignore
           retention-days: 1
@@ -147,15 +147,55 @@ jobs:
       - name: Upload part 07
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-part-07
+          name: server2019-small-07
           path: C:\server2019-parts\part-07.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 08
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-small-08
+          path: C:\server2019-parts\part-08.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 09
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-small-09
+          path: C:\server2019-parts\part-09.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 10
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-small-10
+          path: C:\server2019-parts\part-10.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 11
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-small-11
+          path: C:\server2019-parts\part-11.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 12
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-small-12
+          path: C:\server2019-parts\part-12.bin
           if-no-files-found: ignore
           retention-days: 1
           compression-level: 0
       - name: Upload metadata
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-metadata
+          name: server2019-small-metadata
           path: C:\server2019-parts\server2019-info.txt
           if-no-files-found: error
           retention-days: 1
