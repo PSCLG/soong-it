@@ -1,0 +1,156 @@
+name: Bridge Windows 10 LTSC 2021 Eval
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bridge-win10-ltsc2021.yml
+  workflow_dispatch:
+
+jobs:
+  bridge:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Download official Microsoft LTSC ISO
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://software-static.download.prss.microsoft.com/db/download/444969d5-f34g-4e03-ac9d-1f9786c69161/19044.1288.211006-0501.21h2_release_svc_refresh_CLIENT_LTSC_EVAL_x64FRE_en-us.iso"
+          $iso = "C:\win10-ltsc2021-eval.iso"
+          & curl.exe -sS -L --fail --retry 3 --retry-delay 3 -o $iso $url
+          if ($LASTEXITCODE -ne 0) { throw "Download failed with exit code $LASTEXITCODE" }
+          $hash = (Get-FileHash -Algorithm SHA256 $iso).Hash
+          $expected = "E4AB2E3535BE5748252A8D5D57539A6E59BE8D6726345EE10E7AFD2CB89FEFB5"
+          if ($hash -ne $expected) { throw "SHA256 mismatch: $hash" }
+          $size = (Get-Item $iso).Length
+          @("Source=$url","SHA256=$hash","Size=$size") | Set-Content -Encoding ASCII C:\win10-ltsc-info.txt
+          Get-Content C:\win10-ltsc-info.txt
+
+      - name: Split ISO into 450 MiB chunks
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $inputPath = "C:\win10-ltsc2021-eval.iso"
+          $outDir = "C:\win10-ltsc-parts"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $chunkSize = 450MB
+          $buffer = New-Object byte[] (4MB)
+          $input = [System.IO.File]::OpenRead($inputPath)
+          try {
+            $part = 0
+            while ($input.Position -lt $input.Length) {
+              $partPath = Join-Path $outDir ("part-{0:D2}.bin" -f $part)
+              $output = [System.IO.File]::Create($partPath)
+              try {
+                $written = 0L
+                while ($written -lt $chunkSize -and $input.Position -lt $input.Length) {
+                  $remaining = [Math]::Min($buffer.Length, $chunkSize - $written)
+                  $read = $input.Read($buffer, 0, [int]$remaining)
+                  if ($read -le 0) { break }
+                  $output.Write($buffer, 0, $read)
+                  $written += $read
+                }
+              } finally { $output.Dispose() }
+              $part++
+            }
+          } finally { $input.Dispose() }
+          Copy-Item C:\win10-ltsc-info.txt $outDir\win10-ltsc-info.txt
+          Get-ChildItem $outDir | Select-Object Name,Length
+
+      - name: Upload part 00
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-00
+          path: C:\win10-ltsc-parts\part-00.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-01
+          path: C:\win10-ltsc-parts\part-01.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-02
+          path: C:\win10-ltsc-parts\part-02.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-03
+          path: C:\win10-ltsc-parts\part-03.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-04
+          path: C:\win10-ltsc-parts\part-04.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-05
+          path: C:\win10-ltsc-parts\part-05.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-06
+          path: C:\win10-ltsc-parts\part-06.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 07
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-07
+          path: C:\win10-ltsc-parts\part-07.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 08
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-08
+          path: C:\win10-ltsc-parts\part-08.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 09
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-09
+          path: C:\win10-ltsc-parts\part-09.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload part 10
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-part-10
+          path: C:\win10-ltsc-parts\part-10.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+      - name: Upload metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: win10-ltsc-metadata
+          path: C:\win10-ltsc-parts\win10-ltsc-info.txt
+          if-no-files-found: error
+          retention-days: 1
