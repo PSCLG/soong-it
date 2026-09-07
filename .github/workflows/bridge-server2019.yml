@@ -28,13 +28,113 @@ jobs:
           $info | Set-Content -Encoding ASCII C:\server2019-info.txt
           Get-Content C:\server2019-info.txt
 
-      - name: Upload ISO bridge artifact
+      - name: Split ISO into 900 MiB chunks
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $inputPath = "C:\server2019-eval.iso"
+          $outDir = "C:\server2019-parts"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $chunkSize = 900MB
+          $buffer = New-Object byte[] (4MB)
+          $input = [System.IO.File]::OpenRead($inputPath)
+          try {
+            $part = 0
+            while ($input.Position -lt $input.Length) {
+              $partPath = Join-Path $outDir ("part-{0:D2}.bin" -f $part)
+              $output = [System.IO.File]::Create($partPath)
+              try {
+                $written = 0L
+                while ($written -lt $chunkSize -and $input.Position -lt $input.Length) {
+                  $remaining = [Math]::Min($buffer.Length, $chunkSize - $written)
+                  $read = $input.Read($buffer, 0, [int]$remaining)
+                  if ($read -le 0) { break }
+                  $output.Write($buffer, 0, $read)
+                  $written += $read
+                }
+              } finally { $output.Dispose() }
+              $part++
+            }
+          } finally { $input.Dispose() }
+          Copy-Item C:\server2019-info.txt $outDir\server2019-info.txt
+          Get-ChildItem $outDir | Select-Object Name,Length
+
+      - name: Upload part 00
         uses: actions/upload-artifact@v4
         with:
-          name: server2019-eval-official
-          path: |
-            C:\server2019-eval.iso
-            C:\server2019-info.txt
-          if-no-files-found: error
+          name: server2019-part-00
+          path: C:\server2019-parts\part-00.bin
+          if-no-files-found: ignore
           retention-days: 1
           compression-level: 0
+
+      - name: Upload part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-01
+          path: C:\server2019-parts\part-01.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-02
+          path: C:\server2019-parts\part-02.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-03
+          path: C:\server2019-parts\part-03.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-04
+          path: C:\server2019-parts\part-04.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-05
+          path: C:\server2019-parts\part-05.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-06
+          path: C:\server2019-parts\part-06.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload part 07
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-part-07
+          path: C:\server2019-parts\part-07.bin
+          if-no-files-found: ignore
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-metadata
+          path: C:\server2019-parts\server2019-info.txt
+          if-no-files-found: error
+          retention-days: 1
