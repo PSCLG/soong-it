@@ -1,0 +1,40 @@
+name: Bridge Windows Server 2019 Eval
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bridge-server2019.yml
+
+jobs:
+  bridge:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Download official Microsoft evaluation ISO
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&country=US&culture=en-us"
+          $out = "C:\server2019-eval.iso"
+          Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+          $hash = Get-FileHash -Algorithm SHA256 $out
+          $info = @(
+            "Source=$url"
+            "SHA256=$($hash.Hash)"
+            "Size=$((Get-Item $out).Length)"
+          )
+          $info | Set-Content -Encoding ASCII C:\server2019-info.txt
+          Get-Content C:\server2019-info.txt
+
+      - name: Upload ISO bridge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server2019-eval-official
+          path: |
+            C:\server2019-eval.iso
+            C:\server2019-info.txt
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
