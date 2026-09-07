@@ -18,7 +18,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           $url = "https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x409&country=US&culture=en-us"
           $out = "C:\server2019-eval.iso"
-          Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+          & curl.exe -L --fail --retry 3 --retry-delay 5 -o $out $url
+          if ($LASTEXITCODE -ne 0) { throw "curl download failed with exit code $LASTEXITCODE" }
           $hash = Get-FileHash -Algorithm SHA256 $out
           $info = @(
             "Source=$url"
