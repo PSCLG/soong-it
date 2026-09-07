@@ -1,0 +1,119 @@
+name: Build Automated Deployment WinPE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-deploy-winpe.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Install Microsoft ADK and WinPE add-on
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Install-WithRetry {
+            param([string]$PackageName)
+            for ($i = 1; $i -le 3; $i++) {
+              choco install $PackageName -y --no-progress --execution-timeout=2700
+              if ($LASTEXITCODE -eq 0) { return }
+              if ($i -lt 3) { Start-Sleep -Seconds 15 }
+            }
+            throw "Failed to install $PackageName"
+          }
+          Install-WithRetry "windows-adk"
+          Install-WithRetry "windows-adk-winpe"
+
+      - name: Create WinPE workspace
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
+          call copype amd64 C:\DeployPE
+
+      - name: Inject ASCII CRLF deployment script
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $mount = "C:\DeployPE\mount"
+          dism /Mount-Image /ImageFile:C:\DeployPE\media\sources\boot.wim /Index:1 /MountDir:$mount
+          if ($LASTEXITCODE -ne 0) { throw "Mount failed" }
+          try {
+            $lines = @(
+              '@echo off',
+              'wpeinit',
+              'set CFG=',
+              'set SRC=',
+              'for %%D in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do if exist %%D:\INSTALL.IDX set CFG=%%D:',
+              'for %%D in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do if exist %%D:\sources\install.wim set SRC=%%D:',
+              'if not defined SRC for %%D in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do if exist %%D:\sources\install.esd set SRC=%%D:',
+              'if not defined CFG goto FAILCFG',
+              'if not defined SRC goto FAILSRC',
+              'set /p IDX=<%CFG%\INSTALL.IDX',
+              'echo START>%CFG%\RESULT.TXT',
+              'echo CFG=%CFG%>>%CFG%\RESULT.TXT',
+              'echo SRC=%SRC%>>%CFG%\RESULT.TXT',
+              'echo IDX=%IDX%>>%CFG%\RESULT.TXT',
+              'echo select disk 0>X:\diskpart.txt',
+              'echo clean>>X:\diskpart.txt',
+              'echo convert mbr>>X:\diskpart.txt',
+              'echo create partition primary>>X:\diskpart.txt',
+              'echo format fs=ntfs quick label=Windows>>X:\diskpart.txt',
+              'echo active>>X:\diskpart.txt',
+              'echo assign letter=W>>X:\diskpart.txt',
+              'echo exit>>X:\diskpart.txt',
+              'diskpart /s X:\diskpart.txt >>%CFG%\RESULT.TXT 2>&1',
+              'if errorlevel 1 goto FAILDISK',
+              'if exist %SRC%\sources\install.wim dism /Apply-Image /ImageFile:%SRC%\sources\install.wim /Index:%IDX% /ApplyDir:W:\ >>%CFG%\RESULT.TXT 2>&1',
+              'if exist %SRC%\sources\install.esd dism /Apply-Image /ImageFile:%SRC%\sources\install.esd /Index:%IDX% /ApplyDir:W:\ >>%CFG%\RESULT.TXT 2>&1',
+              'if errorlevel 1 goto FAILDISM',
+              'bcdboot W:\Windows /s W: /f BIOS >>%CFG%\RESULT.TXT 2>&1',
+              'if errorlevel 1 goto FAILBCD',
+              'echo SUCCESS>>%CFG%\RESULT.TXT',
+              'wpeutil shutdown',
+              'goto END',
+              ':FAILCFG',
+              'echo No INSTALL.IDX drive found',
+              'goto END',
+              ':FAILSRC',
+              'echo FAIL_NO_SOURCE>%CFG%\RESULT.TXT',
+              'goto END',
+              ':FAILDISK',
+              'echo FAIL_DISKPART>>%CFG%\RESULT.TXT',
+              'goto END',
+              ':FAILDISM',
+              'echo FAIL_DISM>>%CFG%\RESULT.TXT',
+              'goto END',
+              ':FAILBCD',
+              'echo FAIL_BCDBOOT>>%CFG%\RESULT.TXT',
+              ':END',
+              'cmd.exe'
+            )
+            $text = [string]::Join("`r`n", $lines) + "`r`n"
+            [System.IO.File]::WriteAllText("$mount\Windows\System32\startnet.cmd", $text, [System.Text.Encoding]::ASCII)
+          } finally {
+            dism /Unmount-Image /MountDir:$mount /Commit
+            if ($LASTEXITCODE -ne 0) { throw "Unmount commit failed" }
+          }
+
+      - name: Build ISO and hash
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
+          call MakeWinPEMedia /ISO C:\DeployPE C:\DeployPE\DeployPE.iso
+          certutil -hashfile C:\DeployPE\DeployPE.iso SHA256 > C:\DeployPE\SHA256.txt
+
+      - name: Upload deployment WinPE
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-winpe-amd64
+          path: |
+            C:\DeployPE\DeployPE.iso
+            C:\DeployPE\SHA256.txt
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
